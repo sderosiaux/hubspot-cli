@@ -2,7 +2,6 @@ import { Argv } from 'yargs';
 import createCommand from './function/create.js';
 import listCommand from './function/list.js';
 import deployCommand from './function/deploy.js';
-import serverCommand from './function/server.js';
 import logsCommand from './function/logs.js';
 import { commands } from '../../lang/en.js';
 import { YargsCommandModuleBucket } from '../../types/Yargs.js';
@@ -16,7 +15,6 @@ function functionBuilder(yargs: Argv): Argv {
     .command(createCommand)
     .command(listCommand)
     .command(deployCommand)
-    .command(serverCommand)
     .command(logsCommand)
     .demandCommand(1, '');
 

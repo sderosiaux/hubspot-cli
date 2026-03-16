@@ -1,7 +1,6 @@
 import { Argv } from 'yargs';
 import marketplaceValidate from './theme/marketplace-validate.js';
 import generateSelectors from './theme/generate-selectors.js';
-import previewCommand from './theme/preview.js';
 import createCommand from './theme/create.js';
 import { commands } from '../../lang/en.js';
 import { YargsCommandModuleBucket } from '../../types/Yargs.js';
@@ -12,7 +11,6 @@ const describe = commands.cms.subcommands.theme.describe;
 
 function themeBuilder(yargs: Argv): Argv {
   yargs
-    .command(previewCommand)
     .command(createCommand)
     .command(marketplaceValidate)
     .command(generateSelectors)

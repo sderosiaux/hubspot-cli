@@ -29,7 +29,6 @@ import filemanagerCommand from '../commands/filemanager.js';
 import secretCommands from '../commands/secret.js';
 import customObjectCommand from '../commands/customObject.js';
 import openCommand from '../commands/open.js';
-import projectCommands from '../commands/project.js';
 import configCommand from '../commands/config.js';
 import accountCommands from '../commands/account.js';
 import sandboxesCommand from '../commands/sandbox.js';
@@ -39,7 +38,6 @@ import doctorCommand from '../commands/doctor.js';
 import completionCommand from '../commands/completion.js';
 import appCommand from '../commands/app.js';
 import testAccountCommands from '../commands/testAccount.js';
-import getStartedCommand from '../commands/getStarted.js';
 import upgradeCommand from '../commands/upgrade.js';
 import { uiLogger } from '../lib/ui/logger.js';
 import { initializeSpinniesManager } from '../lib/middleware/spinniesMiddleware.js';
@@ -104,8 +102,6 @@ const argv = yargs(process.argv.slice(2))
     type: 'boolean',
   })
   .check(performChecks)
-  // Getting started / important
-  .command(getStartedCommand)
   .command(feedbackCommand)
 
   // Config/Account management
@@ -118,8 +114,7 @@ const argv = yargs(process.argv.slice(2))
   .command(secretCommands)
   .command(openCommand)
 
-  // Project commands
-  .command(projectCommands)
+  // App commands
   .command(appCommand)
 
   // CRM Commands
