@@ -7,14 +7,13 @@ import {
   EnvironmentArgs,
   YargsCommandModule,
 } from '../../types/Yargs.js';
-import { uiLogger } from '../../lib/ui/logger.js';
 import { logError } from '../../lib/errorHandlers/index.js';
 import { makeYargsBuilder } from '../../lib/yargsUtils.js';
 import { trackCommandUsage } from '../../lib/usageTracking.js';
-import { renderTable } from '../../ui/render.js';
 import {
   outputSuccess,
   outputError,
+  outputTable,
   exitOk,
   exitError,
 } from './_lib/output.js';
@@ -71,20 +70,15 @@ async function handler(
     });
 
     if (!json) {
-      uiLogger.log('');
-      if (properties.length === 0) {
-        uiLogger.log('No properties found.');
-      } else {
-        const tableHeader = ['Name', 'Label', 'Type', 'Group', 'Description'];
-        const tableData = properties.map(p => [
-          p.name,
-          p.label,
-          p.type,
-          p.groupName,
-          (p.description || '').slice(0, 60),
-        ]);
-        await renderTable(tableHeader, tableData);
-      }
+      const tableHeader = ['Name', 'Label', 'Type', 'Group', 'Description'];
+      const tableData = properties.map(p => [
+        p.name,
+        p.label,
+        p.type,
+        p.groupName,
+        (p.description || '').slice(0, 60),
+      ]);
+      outputTable(args, tableHeader, tableData);
     }
 
     exitOk();

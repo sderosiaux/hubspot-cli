@@ -1,5 +1,5 @@
-import { uiLogger } from '../../../lib/ui/logger.js';
-import { renderTable } from '../../../ui/render.js';
+import { table, getBorderCharacters } from 'table';
+import chalk from 'chalk';
 import { EXIT_CODES } from '../../../lib/enums/exitCodes.js';
 
 export type CrmEnvelope<T = unknown> = {
@@ -45,8 +45,9 @@ export function outputSuccess<T>(
     console.log(JSON.stringify({ ok: true, ...envelope }, null, 2));
     return;
   }
-  uiLogger.success(
-    `[${envelope.command}] account ${envelope.account_id}${envelope.total !== undefined ? ` (${envelope.total} results)` : ''}`
+  console.log(
+    chalk.green('✓') +
+      ` [${envelope.command}] account ${envelope.account_id}${envelope.total !== undefined ? ` (${envelope.total} results)` : ''}`
   );
 }
 
@@ -74,7 +75,7 @@ export function outputError(
     );
     return;
   }
-  uiLogger.error(`[${command}] ${message}`);
+  console.error(chalk.red('✗') + ` [${command}] ${message}`);
 }
 
 // Render table (no-op in JSON mode)
@@ -84,8 +85,12 @@ export function outputTable(
   rows: string[][]
 ): void {
   if (isJsonMode(args)) return;
-  if (rows.length > 0) {
-    uiLogger.log('');
-    void renderTable(headers, rows);
-  }
+  if (rows.length === 0) return;
+
+  const output = table([headers.map(h => chalk.bold(h)), ...rows], {
+    border: getBorderCharacters('void'),
+    columnDefault: { paddingLeft: 0, paddingRight: 2 },
+    drawHorizontalLine: () => false,
+  });
+  console.log(output);
 }
