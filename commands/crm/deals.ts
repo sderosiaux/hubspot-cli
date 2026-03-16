@@ -28,6 +28,10 @@ type CrmDealsArgs = CommonArgs &
   EnvironmentArgs & {
     limit?: number;
     properties?: string;
+    stage?: string;
+    after?: string;
+    before?: string;
+    pipeline?: string;
     json?: boolean;
   };
 
@@ -41,6 +45,80 @@ type CrmSearchResponse = {
   total: number;
 };
 
+type SearchFilter = {
+  propertyName: string;
+  operator: string;
+  value?: string;
+};
+
+function buildFilters(args: ArgumentsCamelCase<CrmDealsArgs>): SearchFilter[] {
+  const filters: SearchFilter[] = [];
+
+  if (args.stage) {
+    const raw = args.stage.toLowerCase();
+
+    if (raw === 'won') {
+      filters.push({
+        propertyName: 'hs_is_closed_won',
+        operator: 'EQ',
+        value: 'true',
+      });
+    } else if (raw === 'lost') {
+      filters.push(
+        {
+          propertyName: 'hs_is_closed',
+          operator: 'EQ',
+          value: 'true',
+        },
+        {
+          propertyName: 'hs_is_closed_won',
+          operator: 'EQ',
+          value: 'false',
+        }
+      );
+    } else if (raw === 'open') {
+      filters.push({
+        propertyName: 'hs_is_closed',
+        operator: 'EQ',
+        value: 'false',
+      });
+    } else {
+      // Assume raw stage ID
+      filters.push({
+        propertyName: 'dealstage',
+        operator: 'EQ',
+        value: raw,
+      });
+    }
+  }
+
+  if (args.pipeline) {
+    filters.push({
+      propertyName: 'pipeline',
+      operator: 'EQ',
+      value: args.pipeline,
+    });
+  }
+
+  if (args.after) {
+    filters.push({
+      propertyName: 'closedate',
+      operator: 'GTE',
+      value: new Date(args.after).valueOf().toString(),
+    });
+  }
+
+  if (args.before) {
+    filters.push({
+      propertyName: 'closedate',
+      operator: 'LTE',
+      value: new Date(args.before).valueOf().toString(),
+    });
+  }
+
+  return filters;
+}
+
 async function handler(args: ArgumentsCamelCase<CrmDealsArgs>): Promise<void> {
   const { derivedAccountId, limit = 20, properties } = args;
   void trackCommandUsage('crm-deals', {}, derivedAccountId);
@@ -49,16 +127,37 @@ async function handler(args: ArgumentsCamelCase<CrmDealsArgs>): Promise<void> {
     ? properties.split(',').map(p => p.trim())
     : ['dealname', 'dealstage', 'amount', 'closedate'];
 
-  try {
-    const response = await http.get<CrmSearchResponse>(derivedAccountId, {
-      url: '/crm/v3/objects/deals',
-      params: {
-        limit: String(limit),
-        properties: props.join(','),
-      },
-    });
+  const filters = buildFilters(args);
+  const hasFilters = filters.length > 0;
 
-    const { results, total } = response.data;
+  try {
+    let results: DealResult[];
+    let total: number;
+
+    if (hasFilters) {
+      // Use search API when filters are present
+      const response = await http.post<CrmSearchResponse>(derivedAccountId, {
+        url: '/crm/v3/objects/deals/search',
+        data: {
+          filterGroups: [{ filters }],
+          properties: props,
+          limit: Math.min(limit, 100),
+          sorts: [{ propertyName: 'closedate', direction: 'DESCENDING' }],
+        },
+      });
+      results = response.data.results;
+      total = response.data.total;
+    } else {
+      const response = await http.get<CrmSearchResponse>(derivedAccountId, {
+        url: '/crm/v3/objects/deals',
+        params: {
+          limit: String(limit),
+          properties: props.join(','),
+        },
+      });
+      results = response.data.results;
+      total = response.data.total;
+    }
 
     outputSuccess(args, {
       command: 'crm.deals',
@@ -102,6 +201,23 @@ function dealsBuilder(yargs: Argv): Argv<CrmDealsArgs> {
         'Comma-separated list of properties (default: dealname,dealstage,amount,closedate)',
       type: 'string',
     })
+    .option('stage', {
+      alias: 's',
+      describe: 'Filter by deal stage (ID, or alias: won, lost, open)',
+      type: 'string',
+    })
+    .option('pipeline', {
+      describe: 'Filter by pipeline ID',
+      type: 'string',
+    })
+    .option('after', {
+      describe: 'Filter deals with closedate >= date (YYYY-MM-DD)',
+      type: 'string',
+    })
+    .option('before', {
+      describe: 'Filter deals with closedate <= date (YYYY-MM-DD)',
+      type: 'string',
+    })
     .option('json', {
       describe: 'Output as JSON (for LLM/scripting)',
       type: 'boolean',
@@ -110,10 +226,9 @@ function dealsBuilder(yargs: Argv): Argv<CrmDealsArgs> {
 
   yargs.example([
     ['$0 crm deals', 'List deals with default properties'],
-    [
-      '$0 crm deals -l 50 -p "dealname,amount,pipeline"',
-      'List 50 deals with custom properties',
-    ],
+    ['$0 crm deals -s won --after 2026-01-01', 'Won deals in 2026'],
+    ['$0 crm deals -s open -l 50', 'Open deals'],
+    ['$0 crm deals --pipeline 36825126 -s lost', 'Lost deals in a pipeline'],
   ]);
 
   return yargs as Argv<CrmDealsArgs>;
