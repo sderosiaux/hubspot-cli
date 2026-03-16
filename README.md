@@ -1,43 +1,61 @@
 # hubspot-cli (fork) — CRM commands for humans and machines
 
-Fork of [HubSpot/hubspot-cli](https://github.com/HubSpot/hubspot-cli) v8.1.0 that adds full CRM support.
+Fork of [HubSpot/hubspot-cli](https://github.com/HubSpot/hubspot-cli) v8.1.0 with full CRM support.
 
-The official HubSpot CLI is built for CMS developers: uploading themes, managing serverless functions, deploying projects. It has zero access to CRM data. No contacts, no deals, no companies, no search — nothing.
+The official CLI targets CMS developers: themes, serverless functions, project deploys. It has no CRM access — no contacts, no deals, no search.
 
-This fork fixes that. 17 CRM commands, all with `--json` output for piping into scripts, agents, or LLMs.
+This fork adds 21 CRM commands, all with `--json` output for scripts, agents, and LLMs.
 
-## What's new
+## Commands
 
 ```bash
-hs crm get contacts 12345                          # read one record
-hs crm get deals 789 -p "dealname,amount,pipeline" # with specific properties
+# CRUD
+hs crm get contacts 12345                          # one record
+hs crm get deals 789 -p "dealname,amount,pipeline" # specific properties
 hs crm create contacts -p '{"firstname":"Jane","email":"j@x.com"}'
 hs crm update contacts 12345 -p '{"phone":"+1234"}'
 hs crm delete contacts 12345
 
-hs crm contacts -l 50                  # list contacts
-hs crm companies                       # list companies
-hs crm deals                           # list deals
-hs crm tickets                         # list tickets
-hs crm owners                          # list owners (users)
+# List by type
+hs crm contacts -l 50
+hs crm companies
+hs crm deals
+hs crm tickets
+hs crm owners
 
-hs crm search contacts "acme"          # full-text search any object type
+# Search
+hs crm search contacts "acme"
 hs crm search deals "enterprise" -p "dealname,amount"
 
-hs crm properties contacts             # list all 682 contact properties
+# Schema & properties
+hs crm properties contacts             # all contact properties
 hs crm properties deals --group dealinformation
-hs crm schema                          # all object types + property counts
+hs crm schema                          # object types + property counts
 
-hs crm associations contacts 12345 companies  # what's linked to what
-hs crm engagements contacts 12345             # notes, calls, emails, meetings
+# Relationships
+hs crm associations contacts 12345 companies
+hs crm engagements contacts 12345      # notes, calls, emails, meetings
 
-hs crm pipelines                       # deal/ticket pipelines
-hs crm lists                           # contact lists
+# Pipelines & lists
+hs crm pipelines
+hs crm lists
 
+# Bulk
 echo '[{"firstname":"A"},{"firstname":"B"}]' | hs crm batch create contacts --stdin
+hs crm export contacts -o contacts.json            # full paginated dump
+hs crm export deals -f csv -o deals.csv            # CSV export
+
+# Marketing & automation (requires private app token)
+hs crm forms
+hs crm workflows
+hs crm workflows --active-only
+
+# Analytics
+hs crm analytics                       # pipeline summary: win rate, values, avg deal
+hs crm analytics -p "new logo"         # filter by pipeline name
 ```
 
-Every command supports `--json` for structured output:
+Every command supports `--json`:
 
 ```json
 {
@@ -45,12 +63,11 @@ Every command supports `--json` for structured output:
   "command": "crm.contacts",
   "account_id": 8861897,
   "data": ["..."],
-  "total": 1523,
-  "next_cursor": "abc123"
+  "total": 1523
 }
 ```
 
-Errors follow the same envelope:
+Errors use the same envelope:
 
 ```json
 {
@@ -62,60 +79,47 @@ Errors follow the same envelope:
 }
 ```
 
-## Why this exists
+## Why
 
-I needed to query HubSpot CRM from the terminal. The official CLI can upload a theme but can't list a contact. The REST API works, but managing auth tokens and curl commands for every lookup gets old fast.
+I needed CRM access from the terminal. The official CLI can upload a theme but can't list a contact. Curl + API tokens for every lookup gets old.
 
-This fork wraps the same `@hubspot/local-dev-lib` HTTP layer the official CLI uses, so auth (personal access key or OAuth) works identically. If `hs account info` works, so does `hs crm contacts`.
+This fork uses the same `@hubspot/local-dev-lib` HTTP layer as the official CLI. If `hs account info` works, so does `hs crm contacts`.
 
-The `--json` flag on every command makes the CLI usable by LLM agents and scripts. An agent can call `hs crm schema --json` to discover available object types and properties, then `hs crm search` to find records, then `hs crm get` to read details — without knowing the HubSpot API.
+The `--json` flag makes the CLI usable by LLM agents. An agent calls `hs crm schema --json` to discover object types, `hs crm search` to find records, `hs crm get` to read details — no HubSpot API knowledge needed.
 
 ## Install
 
 ```bash
 git clone https://github.com/sderosiaux/hubspot-cli.git
 cd hubspot-cli
-npm install --legacy-peer-deps
+npm install
 npx tsc
-npm link
+npm pack && npm install -g hubspot-cli-*.tgz
 ```
 
 ## Auth
-
-Same as the official CLI:
 
 ```bash
 hs init        # or hs auth
 ```
 
-You need a personal access key with CRM scopes (`crm.objects.contacts.read`, `crm.objects.deals.read`, etc.). Generate one at `https://app.hubspot.com/personal-access-key/<your-account-id>`.
+Personal access key with CRM scopes (`crm.objects.contacts.read`, `crm.objects.deals.read`, etc.). Generate one at `https://app.hubspot.com/personal-access-key/<your-account-id>`.
+
+Some endpoints (`/crm/v3/pipelines`, `/marketing/v3/forms`, `/automation/v3/workflows`) require a **private app token** — personal access keys get a 403 on these. The commands handle this gracefully and return a clear error.
 
 ## What changed from upstream
 
-**New files (commands/crm/):**
-- `_lib/` — shared output envelope, Zod 4 runtime validation, typed API helpers, pagination
-- 17 command files: get, create, update, delete, contacts, companies, deals, tickets, owners, search, properties, schema, associations, engagements, pipelines, lists, batch
+**Removed:** MCP server, project commands (`hs project`), doctor command, CMS dev server, serverless runtime, `@hubspot/project-parsing-lib` and 5 other `@hubspot/*` dependencies.
 
-**Modified files:**
-- `bin/cli.ts` — registers the `crm` parent command
-- `lang/en.ts` — i18n strings for CRM commands
-- `.eslintrc.cjs` — strict type-checked linting for `commands/crm/**`
+**Added (commands/crm/):**
+- `_lib/` — shared output envelope, typed API helpers, pagination, rate-limit retry
+- 21 command files: get, create, update, delete, contacts, companies, deals, tickets, owners, search, properties, schema, associations, engagements, pipelines, lists, batch, export, forms, workflows, analytics
 
-**Fixed upstream bugs:**
-- `commands/__tests__/auth.test.ts` — missing `mockYargs` declaration
-- `commands/__tests__/open.test.ts` — missing `mockYargs` declaration
-- `commands/secret/__tests__/addSecret.test.ts` — untyped `globalThis` access
-
-Everything else is untouched. The original CMS, project, HubDB, and config commands work as before.
-
-## Code quality
-
-- TypeScript strict mode, zero errors across the whole project
-- ESLint with `@typescript-eslint/recommended-requiring-type-checking` on CRM files, zero warnings
-- Zod 4 runtime validation on API responses
-- Stdout flush before exit (no truncated JSON on large outputs)
-- `--stdin` support on create/update/batch for LLM piping
+**Modified:**
+- `bin/cli.ts` — registers `crm`, removes project/doctor/MCP
+- `lang/en.ts` — stubs out `project-parsing-lib` import
+- `package.json` — cleaned deps, fixed bin paths, react-dom override
 
 ## License
 
-Same as upstream — Apache 2.0.
+Apache 2.0 (same as upstream).
