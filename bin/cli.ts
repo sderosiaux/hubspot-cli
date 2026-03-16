@@ -34,7 +34,6 @@ import accountCommands from '../commands/account.js';
 import sandboxesCommand from '../commands/sandbox.js';
 import cmsCommand from '../commands/cms.js';
 import feedbackCommand from '../commands/feedback.js';
-import doctorCommand from '../commands/doctor.js';
 import completionCommand from '../commands/completion.js';
 import appCommand from '../commands/app.js';
 import testAccountCommands from '../commands/testAccount.js';
@@ -128,7 +127,6 @@ const argv = yargs(process.argv.slice(2))
   // Misc commands
   .command(customObjectCommand)
   .command(completionCommand)
-  .command(doctorCommand)
   .command(upgradeCommand);
 
 const argvWithSuggestions = addCommandSuggestions(argv)

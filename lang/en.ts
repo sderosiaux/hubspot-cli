@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { mapToUserFriendlyName } from '@hubspot/project-parsing-lib/transform';
+const mapToUserFriendlyName = (name: string): string => name;
 import { PLATFORM_VERSIONS } from '@hubspot/local-dev-lib/constants/projects';
 import { PERSONAL_ACCESS_KEY_AUTH_METHOD } from '@hubspot/local-dev-lib/constants/auth';
 import {
