@@ -24,7 +24,6 @@
     "lib",
     "api",
     "lang",
-    "mcp-server",
     "vitest.d.ts",
     "@types",
     "./package.json"

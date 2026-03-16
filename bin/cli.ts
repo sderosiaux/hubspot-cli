@@ -40,7 +40,6 @@ import completionCommand from '../commands/completion.js';
 import appCommand from '../commands/app.js';
 import testAccountCommands from '../commands/testAccount.js';
 import getStartedCommand from '../commands/getStarted.js';
-import mcpCommand from '../commands/mcp.js';
 import upgradeCommand from '../commands/upgrade.js';
 import { uiLogger } from '../lib/ui/logger.js';
 import { initializeSpinniesManager } from '../lib/middleware/spinniesMiddleware.js';
@@ -135,7 +134,6 @@ const argv = yargs(process.argv.slice(2))
   .command(customObjectCommand)
   .command(completionCommand)
   .command(doctorCommand)
-  .command(mcpCommand)
   .command(upgradeCommand);
 
 const argvWithSuggestions = addCommandSuggestions(argv)

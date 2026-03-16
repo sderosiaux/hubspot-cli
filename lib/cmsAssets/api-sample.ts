@@ -29,7 +29,7 @@ const apiSampleAssetType: CreatableCmsAsset = {
         { defaultAnswer: false }
       );
       if (overwrite) {
-        fs.rmdirSync(filePath, { recursive: true });
+        fs.rmSync(filePath, { recursive: true });
       } else {
         return;
       }
