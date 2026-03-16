@@ -20,6 +20,12 @@ import exportCommand from './crm/export.js';
 import formsCommand from './crm/forms.js';
 import workflowsCommand from './crm/workflows.js';
 import analyticsCommand from './crm/analytics.js';
+import auditCommand from './crm/audit.js';
+import staleCommand from './crm/stale.js';
+import velocityCommand from './crm/velocity.js';
+import forecastCommand from './crm/forecast.js';
+import leaderboardCommand from './crm/leaderboard.js';
+import churnCommand from './crm/churn.js';
 import { commands } from '../lang/en.js';
 import { YargsCommandModuleBucket } from '../types/Yargs.js';
 import { makeYargsBuilder } from '../lib/yargsUtils.js';
@@ -57,8 +63,14 @@ function crmBuilder(yargs: Argv): Argv {
     // Marketing & automation
     .command(formsCommand)
     .command(workflowsCommand)
-    // Analytics
+    // Analytics & insights
     .command(analyticsCommand)
+    .command(auditCommand)
+    .command(staleCommand)
+    .command(velocityCommand)
+    .command(forecastCommand)
+    .command(leaderboardCommand)
+    .command(churnCommand)
     .demandCommand(1, '');
 
   return yargs;
