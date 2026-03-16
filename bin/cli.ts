@@ -23,6 +23,7 @@ import { handleDisableUsageTracking } from '../lib/middleware/usageTrackingMiddl
 
 import initCommand from '../commands/init.js';
 import hubdbCommand from '../commands/hubdb.js';
+import crmCommand from '../commands/crm.js';
 import authCommand from '../commands/auth.js';
 import filemanagerCommand from '../commands/filemanager.js';
 import secretCommands from '../commands/secret.js';
@@ -121,6 +122,9 @@ const argv = yargs(process.argv.slice(2))
   // Project commands
   .command(projectCommands)
   .command(appCommand)
+
+  // CRM Commands
+  .command(crmCommand)
 
   // CMS Commands
   .command(cmsCommand)

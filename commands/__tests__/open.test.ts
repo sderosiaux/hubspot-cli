@@ -4,7 +4,7 @@ import * as commonOpts from '../../lib/commonOpts.js';
 
 vi.mock('../../lib/commonOpts');
 
-// Spies are now safe to create since the methods exist on the mock
+const mockYargs = yargs as Argv;
 const positionalSpy = vi.spyOn(mockYargs, 'positional');
 const optionSpy = vi.spyOn(mockYargs, 'option');
 const exampleSpy = vi.spyOn(mockYargs, 'example');

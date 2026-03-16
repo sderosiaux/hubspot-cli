@@ -25,7 +25,10 @@ const processExitSpy = vi.spyOn(process, 'exit');
 
 describe('commands/secret/addSecret', () => {
   const yargsMock = yargs as Argv;
-  const uiLogger = global.mockUiLogger;
+  const uiLogger = (global as Record<string, unknown>).mockUiLogger as Record<
+    string,
+    unknown
+  >;
 
   beforeEach(() => {
     vi.clearAllMocks();

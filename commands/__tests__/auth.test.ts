@@ -4,6 +4,7 @@ import authCommand from '../auth.js';
 
 vi.mock('../../lib/commonOpts');
 
+const mockYargs = yargs as Argv;
 const optionsSpy = vi
   .spyOn(mockYargs, 'options')
   .mockReturnValue(yargs as Argv);

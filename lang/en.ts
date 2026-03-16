@@ -1394,6 +1394,48 @@ export const commands = {
       },
     },
   },
+  crm: {
+    describe:
+      'Commands for managing CRM data (contacts, companies, deals, owners, pipelines).',
+    subcommands: {
+      contacts: {
+        describe: 'List contacts in your HubSpot account.',
+        success: (accountId: number, total: number) =>
+          `Showing contacts for account ${accountId} (${total} total):`,
+        noResults: 'No contacts found.',
+      },
+      companies: {
+        describe: 'List companies in your HubSpot account.',
+        success: (accountId: number, total: number) =>
+          `Showing companies for account ${accountId} (${total} total):`,
+        noResults: 'No companies found.',
+      },
+      deals: {
+        describe: 'List deals in your HubSpot account.',
+        success: (accountId: number, total: number) =>
+          `Showing deals for account ${accountId} (${total} total):`,
+        noResults: 'No deals found.',
+      },
+      owners: {
+        describe: 'List owners in your HubSpot account.',
+        success: (accountId: number, count: number) =>
+          `Showing ${count} owner(s) for account ${accountId}:`,
+        noResults: 'No owners found.',
+      },
+      pipelines: {
+        describe: 'List pipelines in your HubSpot account.',
+        success: (accountId: number, objectType: string) =>
+          `Showing ${objectType} pipelines for account ${accountId}:`,
+        noResults: 'No pipelines found.',
+      },
+      search: {
+        describe: 'Search CRM objects by query.',
+        success: (total: number, objectType: string, query: string) =>
+          `Found ${total} ${objectType} matching "${query}":`,
+        noResults: 'No results found.',
+      },
+    },
+  },
   hubdb: {
     describe: 'Commands for managing HubDB tables.',
     subcommands: {
