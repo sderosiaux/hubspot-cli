@@ -16,6 +16,10 @@ import schemaCommand from './crm/schema.js';
 import engagementsCommand from './crm/engagements.js';
 import listsCommand from './crm/lists.js';
 import batchCommand from './crm/batch.js';
+import exportCommand from './crm/export.js';
+import formsCommand from './crm/forms.js';
+import workflowsCommand from './crm/workflows.js';
+import analyticsCommand from './crm/analytics.js';
 import { commands } from '../lang/en.js';
 import { YargsCommandModuleBucket } from '../types/Yargs.js';
 import { makeYargsBuilder } from '../lib/yargsUtils.js';
@@ -47,8 +51,14 @@ function crmBuilder(yargs: Argv): Argv {
     // Pipelines & lists
     .command(pipelinesCommand)
     .command(listsCommand)
-    // Batch
+    // Batch & export
     .command(batchCommand)
+    .command(exportCommand)
+    // Marketing & automation
+    .command(formsCommand)
+    .command(workflowsCommand)
+    // Analytics
+    .command(analyticsCommand)
     .demandCommand(1, '');
 
   return yargs;
