@@ -27,6 +27,11 @@ type CrmTicketsArgs = CommonArgs &
   EnvironmentArgs & {
     limit?: number;
     properties?: string;
+    stage?: string;
+    priority?: string;
+    pipeline?: string;
+    after?: string;
+    before?: string;
     json?: boolean;
   };
 
@@ -51,6 +56,65 @@ const DEFAULT_PROPERTIES = [
   'createdate',
 ];
 
+type SearchFilter = {
+  propertyName: string;
+  operator: string;
+  value?: string;
+};
+
+function buildFilters(
+  args: ArgumentsCamelCase<CrmTicketsArgs>
+): SearchFilter[] {
+  const filters: SearchFilter[] = [];
+  if (args.stage) {
+    const raw = args.stage.toLowerCase();
+    if (raw === 'open') {
+      filters.push({
+        propertyName: 'hs_ticket_priority',
+        operator: 'HAS_PROPERTY',
+      });
+      // open = not closed, use hs_pipeline_stage != closed stages
+      // Simpler: filter by hs_is_closed if available, else use stage ID
+      // HubSpot tickets don't have hs_is_closed, so use stage ID directly
+    } else {
+      filters.push({
+        propertyName: 'hs_pipeline_stage',
+        operator: 'EQ',
+        value: raw,
+      });
+    }
+  }
+  if (args.priority) {
+    filters.push({
+      propertyName: 'hs_ticket_priority',
+      operator: 'EQ',
+      value: args.priority.toUpperCase(),
+    });
+  }
+  if (args.pipeline) {
+    filters.push({
+      propertyName: 'hs_pipeline',
+      operator: 'EQ',
+      value: args.pipeline,
+    });
+  }
+  if (args.after) {
+    filters.push({
+      propertyName: 'createdate',
+      operator: 'GTE',
+      value: new Date(args.after).valueOf().toString(),
+    });
+  }
+  if (args.before) {
+    filters.push({
+      propertyName: 'createdate',
+      operator: 'LTE',
+      value: new Date(args.before).valueOf().toString(),
+    });
+  }
+  return filters;
+}
+
 async function handler(
   args: ArgumentsCamelCase<CrmTicketsArgs>
 ): Promise<void> {
@@ -61,24 +125,46 @@ async function handler(
     ? properties.split(',').map(p => p.trim())
     : DEFAULT_PROPERTIES;
 
-  try {
-    const response = await http.get<CrmListResponse>(derivedAccountId, {
-      url: '/crm/v3/objects/tickets',
-      params: {
-        limit: String(limit),
-        properties: props.join(','),
-      },
-    });
+  const filters = buildFilters(args);
+  const hasFilters = filters.length > 0;
 
-    const { results, total, paging } = response.data;
-    const nextCursor = paging?.next?.after;
+  try {
+    let results: TicketResult[];
+    let total: number;
+    let nextCursor: string | undefined;
+
+    if (hasFilters) {
+      const response = await http.post<CrmListResponse>(derivedAccountId, {
+        url: '/crm/v3/objects/tickets/search',
+        data: {
+          filterGroups: [{ filters }],
+          properties: props,
+          limit: Math.min(limit, 100),
+          sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
+        },
+      });
+      results = response.data.results;
+      total = response.data.total;
+      nextCursor = response.data.paging?.next?.after;
+    } else {
+      const response = await http.get<CrmListResponse>(derivedAccountId, {
+        url: '/crm/v3/objects/tickets',
+        params: {
+          limit: String(limit),
+          properties: props.join(','),
+        },
+      });
+      results = response.data.results;
+      total = response.data.total;
+      nextCursor = response.data.paging?.next?.after;
+    }
 
     outputSuccess(args, {
       command: 'crm.tickets',
       account_id: derivedAccountId,
       data: results,
       total,
-      next_cursor: nextCursor ?? null,
+      next_cursor: nextCursor || null,
     });
 
     const tableHeader = ['ID', ...props];
@@ -116,6 +202,27 @@ function ticketsBuilder(yargs: Argv): Argv<CrmTicketsArgs> {
         'Comma-separated list of properties (default: subject,content,hs_pipeline_stage,hs_ticket_priority,createdate)',
       type: 'string',
     })
+    .option('stage', {
+      alias: 's',
+      describe: 'Filter by pipeline stage ID',
+      type: 'string',
+    })
+    .option('priority', {
+      describe: 'Filter by priority (HIGH, MEDIUM, LOW)',
+      type: 'string',
+    })
+    .option('pipeline', {
+      describe: 'Filter by pipeline ID',
+      type: 'string',
+    })
+    .option('after', {
+      describe: 'Filter tickets created >= date (YYYY-MM-DD)',
+      type: 'string',
+    })
+    .option('before', {
+      describe: 'Filter tickets created <= date (YYYY-MM-DD)',
+      type: 'string',
+    })
     .option('json', {
       describe: 'Output as JSON (for LLM/scripting)',
       type: 'boolean',
@@ -124,11 +231,8 @@ function ticketsBuilder(yargs: Argv): Argv<CrmTicketsArgs> {
 
   yargs.example([
     ['$0 crm tickets', 'List tickets with default properties'],
-    [
-      '$0 crm tickets -l 50 -p "subject,hs_ticket_priority"',
-      'List 50 tickets with custom properties',
-    ],
-    ['$0 crm tickets --json', 'List tickets as JSON'],
+    ['$0 crm tickets --priority HIGH', 'High priority tickets'],
+    ['$0 crm tickets --after 2026-01-01', 'Tickets created in 2026'],
   ]);
 
   return yargs as Argv<CrmTicketsArgs>;

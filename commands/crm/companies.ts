@@ -28,6 +28,10 @@ type CrmCompaniesArgs = CommonArgs &
   EnvironmentArgs & {
     limit?: number;
     properties?: string;
+    owner?: string;
+    industry?: string;
+    after?: string;
+    before?: string;
     json?: boolean;
   };
 
@@ -41,6 +45,47 @@ type CrmSearchResponse = {
   total: number;
 };
 
+type SearchFilter = {
+  propertyName: string;
+  operator: string;
+  value?: string;
+};
+
+function buildFilters(
+  args: ArgumentsCamelCase<CrmCompaniesArgs>
+): SearchFilter[] {
+  const filters: SearchFilter[] = [];
+  if (args.owner) {
+    filters.push({
+      propertyName: 'hubspot_owner_id',
+      operator: 'EQ',
+      value: args.owner,
+    });
+  }
+  if (args.industry) {
+    filters.push({
+      propertyName: 'industry',
+      operator: 'EQ',
+      value: args.industry,
+    });
+  }
+  if (args.after) {
+    filters.push({
+      propertyName: 'createdate',
+      operator: 'GTE',
+      value: new Date(args.after).valueOf().toString(),
+    });
+  }
+  if (args.before) {
+    filters.push({
+      propertyName: 'createdate',
+      operator: 'LTE',
+      value: new Date(args.before).valueOf().toString(),
+    });
+  }
+  return filters;
+}
+
 async function handler(
   args: ArgumentsCamelCase<CrmCompaniesArgs>
 ): Promise<void> {
@@ -51,16 +96,36 @@ async function handler(
     ? properties.split(',').map(p => p.trim())
     : ['name', 'domain', 'industry', 'city'];
 
-  try {
-    const response = await http.get<CrmSearchResponse>(derivedAccountId, {
-      url: '/crm/v3/objects/companies',
-      params: {
-        limit: String(limit),
-        properties: props.join(','),
-      },
-    });
+  const filters = buildFilters(args);
+  const hasFilters = filters.length > 0;
 
-    const { results, total } = response.data;
+  try {
+    let results: CompanyResult[];
+    let total: number;
+
+    if (hasFilters) {
+      const response = await http.post<CrmSearchResponse>(derivedAccountId, {
+        url: '/crm/v3/objects/companies/search',
+        data: {
+          filterGroups: [{ filters }],
+          properties: props,
+          limit: Math.min(limit, 100),
+          sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
+        },
+      });
+      results = response.data.results;
+      total = response.data.total;
+    } else {
+      const response = await http.get<CrmSearchResponse>(derivedAccountId, {
+        url: '/crm/v3/objects/companies',
+        params: {
+          limit: String(limit),
+          properties: props.join(','),
+        },
+      });
+      results = response.data.results;
+      total = response.data.total;
+    }
 
     outputSuccess(args, {
       command: 'crm.companies',
@@ -104,6 +169,22 @@ function companiesBuilder(yargs: Argv): Argv<CrmCompaniesArgs> {
         'Comma-separated list of properties (default: name,domain,industry,city)',
       type: 'string',
     })
+    .option('owner', {
+      describe: 'Filter by owner ID',
+      type: 'string',
+    })
+    .option('industry', {
+      describe: 'Filter by industry value',
+      type: 'string',
+    })
+    .option('after', {
+      describe: 'Filter companies created >= date (YYYY-MM-DD)',
+      type: 'string',
+    })
+    .option('before', {
+      describe: 'Filter companies created <= date (YYYY-MM-DD)',
+      type: 'string',
+    })
     .option('json', {
       describe: 'Output as JSON (for LLM/scripting)',
       type: 'boolean',
@@ -112,10 +193,8 @@ function companiesBuilder(yargs: Argv): Argv<CrmCompaniesArgs> {
 
   yargs.example([
     ['$0 crm companies', 'List companies with default properties'],
-    [
-      '$0 crm companies -l 50 -p "name,domain,phone"',
-      'List 50 companies with custom properties',
-    ],
+    ['$0 crm companies --industry COMPUTER_SOFTWARE', 'Filter by industry'],
+    ['$0 crm companies --after 2026-01-01', 'Companies created in 2026'],
   ]);
 
   return yargs as Argv<CrmCompaniesArgs>;
